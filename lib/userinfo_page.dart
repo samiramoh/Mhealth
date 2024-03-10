@@ -221,7 +221,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
 
   Widget buildSmokingSelector() {
     return SwitchListTile(
-      title: const Text('Do you Smoke?'),
+      title: const Text('Do you Smoke???'),
       value: _isSmoker,
       activeColor: Colors.green,
       onChanged: (bool value) {
