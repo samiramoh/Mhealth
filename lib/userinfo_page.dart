@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mhealth/input_box.dart' as boxes;
 import 'package:mhealth/login_page.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class UserInformationPage extends StatefulWidget {
   const UserInformationPage({super.key});
@@ -11,6 +12,21 @@ class UserInformationPage extends StatefulWidget {
 }
 
 class _UserInformationPageState extends State<UserInformationPage> {
+  final _auth = FirebaseAuth.instance;
+  late User? loggedInUser;
+  @override
+  void initState() {
+    super.initState();
+    getCurrentUser();
+  }
+
+  void getCurrentUser() async {
+    // ignore: unused_local_variable
+    final user = await _auth.currentUser;
+    loggedInUser = user;
+    debugPrint(loggedInUser?.email);
+  }
+
   bool _isSmoker = false;
   String _gender = 'Male';
   String _cholesterol = 'Normal';

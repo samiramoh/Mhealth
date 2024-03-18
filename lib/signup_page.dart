@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-//import 'package:flutter/gestures.dart';
-import 'package:mhealth/userinfo_page.dart'; // Make sure this is the correct path
-import 'package:mhealth/login_page.dart'; // Make sure this is the correct path
+import 'package:mhealth/userinfo_page.dart';
+import 'package:mhealth/login_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -11,6 +11,9 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  final _auth = FirebaseAuth.instance;
+  late String email;
+  late String password;
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -39,8 +42,21 @@ class _SignUpPageState extends State<SignUpPage> {
     }
 
     // If all validations pass, navigate to the next page or handle the sign-up logic
-    Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const UserInformationPage()));
+    _registerUser(email, password);
+  }
+
+  Future<void> _registerUser(String email, String password) async {
+    try {
+      final newUser = await _auth.createUserWithEmailAndPassword(
+          email: email, password: password);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const UserInformationPage()),
+      );
+    } catch (e) {
+      print(e);
+      _showAlertDialog('Error', 'Failed to create account.');
+    }
   }
 
   void _showAlertDialog(String title, String message) {
@@ -84,6 +100,10 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 24),
               TextFormField(
+                onChanged: (value) {
+                  email = value;
+                  debugPrint(email);
+                },
                 controller: _emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email',
@@ -93,6 +113,10 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               const SizedBox(height: 20),
               TextFormField(
+                onChanged: (value) {
+                  password = value;
+                  debugPrint(password);
+                },
                 controller: _passwordController,
                 decoration: const InputDecoration(
                   labelText: 'Password',
@@ -122,7 +146,7 @@ class _SignUpPageState extends State<SignUpPage> {
               const SizedBox(height: 20),
               GestureDetector(
                 onTap: () {
-                  Navigator.push(
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => const LoginPage()),
                   );
