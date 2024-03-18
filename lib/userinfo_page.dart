@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mhealth/input_box.dart' as boxes;
-import 'package:mhealth/login_page.dart';
+import 'package:mhealth/login_page.dart'; // Make sure this import is correct
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserInformationPage extends StatefulWidget {
   const UserInformationPage({super.key});
@@ -12,19 +12,22 @@ class UserInformationPage extends StatefulWidget {
 }
 
 class _UserInformationPageState extends State<UserInformationPage> {
-  final _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   late User? loggedInUser;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   @override
   void initState() {
     super.initState();
     getCurrentUser();
   }
 
-  void getCurrentUser() async {
-    // ignore: unused_local_variable
-    final user = await _auth.currentUser;
-    loggedInUser = user;
-    debugPrint(loggedInUser?.email);
+  void getCurrentUser() {
+    final user = _auth.currentUser;
+    if (user != null) {
+      loggedInUser = user;
+      debugPrint(loggedInUser?.email);
+    }
   }
 
   bool _isSmoker = false;
@@ -52,7 +55,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
     }
   }
 
-  void _onSave() {
+  void _onSave() async {
     if (_firstNameController.text.isEmpty ||
         _lastNameController.text.isEmpty ||
         _heightController.text.isEmpty ||
@@ -62,12 +65,52 @@ class _UserInformationPageState extends State<UserInformationPage> {
       return;
     }
 
-    print(
-        'Information saved with: Gender: $_gender, Smoker: $_isSmoker, Cholesterol: $_cholesterol, Glucose: $_glucose');
-    // Here, you'd typically send the information to a server or save it locally
+    // Convert height and weight to numbers
+    final num height = num.tryParse(_heightController.text) ?? 0;
+    final num weight = num.tryParse(_weightController.text) ?? 0;
 
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (context) => const LoginPage()));
+    // Convert gender to boolean
+    final bool genderBool = _gender == 'Male';
+
+    // Convert date of birth to Timestamp
+    final DateFormat format = DateFormat('dd/MM/yyyy');
+    final DateTime dob = format.parse(_dateOfBirthController.text);
+    final Timestamp dobTimestamp = Timestamp.fromDate(dob);
+
+    // Assemble the user data into a map with the correct types
+    var isSmoker = _isSmoker;
+    var cholesterol = _cholesterol;
+    var glucose = _glucose;
+    final userData = {
+      'Fname': _firstNameController.text,
+      'Lname': _lastNameController.text,
+      'Height': height,
+      'Weight': weight,
+      'dateofbirth': dobTimestamp,
+      'gender': genderBool,
+      'smoker': isSmoker,
+      'cholesterol': cholesterol,
+      'Glucose': glucose,
+    };
+
+    // Save the data to the 'user data' collection in Cloud Firestore
+    try {
+      var firestore = _firestore;
+      await firestore
+          .collection('user data') // Changed to 'user data' collection
+          .doc(loggedInUser?.uid) // Use the UID as the document ID
+          .set(
+              userData,
+              SetOptions(
+                  merge: true)); // Merge the data with existing documents
+      debugPrint(
+          'User information saved to Firestore in the user data collection.');
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (context) => const LoginPage()));
+    } catch (e) {
+      _showAlertDialog('Error', 'Failed to save user information.');
+      debugPrint(e.toString());
+    }
   }
 
   void _showAlertDialog(String title, String message) {
@@ -121,7 +164,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
               controller: _firstNameController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Ex: Noor',
+                hintText: 'Ex: John',
               ),
             ),
             const SizedBox(height: 15),
@@ -131,11 +174,9 @@ class _UserInformationPageState extends State<UserInformationPage> {
               controller: _lastNameController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Ex: Alawi',
+                hintText: 'Ex: Doe',
               ),
             ),
-
-            // ... Repeat similar code for last name, height, weight ...
             const SizedBox(height: 15),
             const Text('Date of Birth'),
             const SizedBox(height: 15),
@@ -154,7 +195,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
               readOnly: true,
             ),
             const SizedBox(height: 15),
-            const Text('Height'),
+            const Text('Height (cm)'),
             const SizedBox(height: 15),
             TextField(
               controller: _heightController,
@@ -162,36 +203,41 @@ class _UserInformationPageState extends State<UserInformationPage> {
                 border: OutlineInputBorder(),
                 hintText: 'Ex: 178',
               ),
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 15),
-            const Text('Weight'),
+            const Text('Weight (kg)'),
             const SizedBox(height: 15),
             TextField(
               controller: _weightController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Ex: 60',
+                hintText: 'Ex: 70',
               ),
+              keyboardType: TextInputType.number,
             ),
-            // ... Repeat for gender, smoker, cholesterol, glucose ...
             const SizedBox(height: 16),
-            const boxes.InputBoxTitle(text: 'Gender'),
+            const Text('Gender'),
             buildGenderSelector(),
-            const boxes.InputBoxTitle(text: 'Do you Smoke?'),
+            const SizedBox(height: 16),
+            const Text('Do you Smoke?'),
             buildSmokingSelector(),
-            const boxes.InputBoxTitle(text: 'Cholesterol'),
+            const SizedBox(height: 16),
+            const Text('Cholesterol Level'),
             buildCholesterolSelector(),
-            const boxes.InputBoxTitle(text: 'Glucose'),
+            const SizedBox(height: 16),
+            const Text('Glucose Level'),
             buildGlucoseSelector(),
-            const SizedBox(height: 24),
             const SizedBox(height: 24),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color.fromARGB(255, 248, 250, 248),
-                foregroundColor: Colors.grey,
+                minimumSize: const Size(double.infinity,
+                    50), // Width as wide as the parent, height 50
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
               ),
               onPressed: _onSave,
-              child: const Text('Save'),
+              child: const Text('Save Information'),
             ),
           ],
         ),

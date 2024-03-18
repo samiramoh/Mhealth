@@ -11,7 +11,7 @@ void main() async {
       messagingSenderId: "194857567449", //paste your messagingSenderId here
       projectId: "mhealthapp-2647c", //paste your project id here
     ),);
-  runApp(const MaterialApp(
+  runApp( MaterialApp(
     home: Scaffold(
       body: LoginPage(),
     ),

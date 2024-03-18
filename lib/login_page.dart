@@ -1,79 +1,102 @@
 import 'package:flutter/material.dart';
-//import 'package:mhealth/userinfo_page.dart'; // Ensure this is the correct path to your signup page
 import 'package:mhealth/signup_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  _LoginPageState createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  String email = '';
+  String password = '';
+  String errorMessage = ''; // Variable to hold the error message
+
+  void signInWithEmailAndPassword() async {
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        errorMessage = "Please enter your email and password.";
+      });
+      return;
+    }
+
+    try {
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      if (userCredential.user != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SignUpPage()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        // Update the error message and refresh the UI
+        errorMessage = e.message ?? 'An error occurred during sign in.';
+      });
+    } catch (e) {
+      setState(() {
+        // Update the error message for any other exceptions
+        errorMessage = 'An unexpected error occurred.';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
-        // Make the page scrollable
         child: Padding(
           padding: EdgeInsets.only(
             left: 16.0,
-            top: MediaQuery.of(context).size.height *
-                0.2, // Adjust the padding dynamically
+            top: MediaQuery.of(context).size.height * 0.2,
             right: 16.0,
-            bottom: MediaQuery.of(context).viewInsets.bottom +
-                20, // Padding for keyboard
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/images/logo.jpeg', // Make sure this asset exists in your project
-                width: MediaQuery.of(context).size.width *
-                    0.6, // Responsive to the screen width
+                'assets/images/logo.jpeg', // Replace with your actual logo path
+                width: MediaQuery.of(context).size.width * 0.6,
               ),
               const SizedBox(height: 24), // Space between image and text
-              const Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Login to your account',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Tahoma',
+              // ... rest of your widget tree ...
+              if (errorMessage.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    errorMessage,
+                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              const InputBoxWithLabel(
+              InputBoxWithLabel(
                 label: 'Email',
+                onChanged: (value) {
+                  email = value;
+                },
                 isObscure: false,
               ),
               const SizedBox(height: 16),
-              const InputBoxWithLabel(
+              InputBoxWithLabel(
                 label: 'Password',
+                onChanged: (value) {
+                  password = value;
+                },
                 isObscure: true,
               ),
               const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.center, // Center the text horizontally
-                child: GestureDetector(
-                  onTap: () {
-                    // Implement your "Forgot Password" logic here
-                    print('Forgot Password tapped');
-                  },
-                  child: const Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Tahoma',
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              // ... Rest of the UI components, including buttons ...
               ElevatedButton(
-                onPressed: () {
-                  // Implement your login logic here
-                  print('Sign in button pressed');
-                },
+                onPressed:
+                    signInWithEmailAndPassword, // Updated to method reference
+                // Button styling
                 style: ElevatedButton.styleFrom(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
@@ -122,9 +145,12 @@ class LoginPage extends StatelessWidget {
 class InputBoxWithLabel extends StatelessWidget {
   final String label;
   final bool isObscure;
+  final ValueChanged<String>? onChanged;
+
   const InputBoxWithLabel({
     required this.label,
     this.isObscure = false,
+    this.onChanged,
     super.key,
   });
 
@@ -132,6 +158,7 @@ class InputBoxWithLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextField(
       obscureText: isObscure,
+      onChanged: onChanged,
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(fontSize: 18),
