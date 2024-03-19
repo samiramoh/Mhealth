@@ -164,7 +164,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
               controller: _firstNameController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Ex: John',
+                hintText: 'Ex: Noor',
               ),
             ),
             const SizedBox(height: 15),
@@ -174,7 +174,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
               controller: _lastNameController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Ex: Doe',
+                hintText: 'Ex: Alawi',
               ),
             ),
             const SizedBox(height: 15),
