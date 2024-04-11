@@ -38,6 +38,7 @@ dependencies:
   firebase_core: ^2.27.1
   firebase_auth: ^4.17.9
   cloud_firestore: ^4.15.9
+  flutter_health_connect: ^1.2.3
 
 
 dev_dependencies:

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mhealth/signup_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:mhealth/inputdata.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -134,6 +135,13 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
+              ElevatedButton(onPressed: (){
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const Health()),
+                  );
+              },
+              child: const Text("Input"))
             ],
           ),
         ),
