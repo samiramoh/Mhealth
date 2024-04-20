@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mhealth/signup_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mhealth/inputdata.dart';
-
+import 'package:mhealth/home_page.dart';
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -32,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
       if (userCredential.user != null) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const SignUpPage()),
+          MaterialPageRoute(builder: (context) => const HomePage()),
         );
       }
     } on FirebaseAuthException catch (e) {
