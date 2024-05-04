@@ -4,7 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_health_connect/flutter_health_connect.dart';
 import 'package:mhealth/editinfopage.dart';
 import 'package:mhealth/settings.dart';
-//import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,11 +16,53 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   late Future<UserData> userDataFuture;
-  final int _currentIndex = 0;
+  int? userStressLevel;
+  int heartrate = 0;
+  double systolics = 0;
+  double diastolics = 0;
+  int activity = 0;
+  int steps = 0;
+  String sleep = 'No data';
+  String processedData = "No processed data yet";
+  late int age;
+  final String _message = '';
+
   @override
   void initState() {
     super.initState();
     userDataFuture = fetchUserData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showStressLevelDialog(); // Call this after the initial frame is rendered
+    });
+    fetchAllHealthData();
+  }
+
+  Future<void> showStressLevelDialog() async {
+    int? selectedStressLevel = await showDialog<int>(
+      context: context,
+      barrierDismissible: false, // User must tap a button.
+      builder: (BuildContext dialogContext) {
+        return SimpleDialog(
+          title: const Text('In a scale from 1 to 10 how stressed are you?'),
+          children: List<Widget>.generate(
+              10,
+              (index) => SimpleDialogOption(
+                    onPressed: () {
+                      Navigator.pop(dialogContext,
+                          index + 1); // Pass the index + 1 as the result
+                    },
+                    child: Text('Stress level ${index + 1}'),
+                  )),
+        );
+      },
+    );
+
+    if (selectedStressLevel != null) {
+      setState(() {
+        userStressLevel = selectedStressLevel;
+        sendHealthData();
+      });
+    }
   }
 
   Future<UserData> fetchUserData() async {
@@ -45,206 +88,43 @@ class _HomePageState extends State<HomePage> {
     var name = data['Fname'] as String?;
     var height = (data['Height'] as num?)?.toDouble();
     var weight = (data['Weight'] as num?)?.toDouble();
+    Timestamp? dobTimestamp = data['dateofbirth'] as Timestamp?;
 
-    if (name == null || height == null || weight == null) {
-      throw Exception('Missing user data fields.');
+    if (name == null) {
+      throw Exception('Name field is missing in user data.');
+    }
+    if (height == null) {
+      throw Exception('Height field is missing in user data.');
+    }
+    if (weight == null) {
+      throw Exception('Weight field is missing in user data.');
+    }
+    if (dobTimestamp == null) {
+      throw Exception('Date of Birth field is missing in user data.');
     }
 
-    return UserData(name: name, height: height, weight: weight);
+    DateTime dateOfBirth = dobTimestamp.toDate();
+    DateTime currentDate = DateTime.now();
+    int age = currentDate.year - dateOfBirth.year;
+    if (currentDate.month < dateOfBirth.month ||
+        (currentDate.month == dateOfBirth.month &&
+            currentDate.day < dateOfBirth.day)) {
+      age--;
+    }
+    return UserData(name: name, height: height, weight: weight, age: age);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: FutureBuilder<UserData>(
-        future: userDataFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.hasData) {
-            UserData user = snapshot.data!;
-            return SingleChildScrollView(
-                child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 50),
-                Text('Hello, ${user.name}!',
-                    textAlign: TextAlign.left,
-                    style: const TextStyle(fontSize: 24)),
-                const SizedBox(height: 20),
-                FutureBuilder<double>(
-                  future: getHeartRateData(),
-                  builder: (context, heartRateSnapshot) {
-                    return _buildHealthCard(
-                      'Heart Rate',
-                      heartRateSnapshot.hasData
-                          ? '${heartRateSnapshot.data} BPM'
-                          : 'Loading...',
-                      'assets/images/heartrate.png',
-                      Colors.red,
-                    );
-                  },
-                ),
-                FutureBuilder<String>(
-                  future: getBloodPressure(),
-                  builder: (context, snapshot) {
-                    return _buildHealthCard(
-                      'Blood Pressure',
-                      snapshot.hasData ? snapshot.data! : 'Loading...',
-                      'assets/images/bloodpress.png',
-                      Colors.redAccent,
-                    );
-                  },
-                ),
-                FutureBuilder<int>(
-                  future: getSteps,
-                  builder: (context, stepsSnapshot) {
-                    return _buildHealthCard(
-                      'Steps',
-                      stepsSnapshot.hasData
-                          ? '${stepsSnapshot.data} SPD'
-                          : 'Loading...',
-                      'assets/images/steps.png',
-                      Colors.black,
-                    );
-                  },
-                ),
-                FutureBuilder<String>(
-                  future: getSleepSession(),
-                  builder: (context, sleepSnapshot) {
-                    return _buildHealthCard(
-                      'Sleep Duration',
-                      sleepSnapshot.hasData
-                          ? sleepSnapshot.data!
-                          : 'Loading...',
-                      'assets/images/sleep.png',
-                      Colors.deepPurple,
-                    );
-                  },
-                ),
-                Card(
-                  margin: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: Image.asset(
-                          'assets/images/bmi.png',
-                          width: 70,
-                          height: 70,
-                        ),
-                        title: const Text('BMI',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          user.getBmiCategory(),
-                          style:
-                              TextStyle(color: Theme.of(context).primaryColor),
-                        ),
-                        trailing: Text(
-                          user.calculateBMI().toStringAsFixed(2),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Hospital Message Card
-                Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  child: ListTile(
-                    title: const Text(
-                      'If you feel the need to go to the hospital, don\'t hesitate to call emergency services.',
-                    ),
-                    leading: const Icon(Icons.warning, color: Colors.orange),
-                    onTap: () {
-                      // _makePhoneCall('911');
-                    },
-                  ),
-                ),
-
-                // Alert Card
-                Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  color: Colors.redAccent,
-                  child: ListTile(
-                    title: const Text('ALERT!',
-                        style: TextStyle(color: Colors.white)),
-                    leading: const Icon(Icons.add_alert, color: Colors.white),
-                    onTap: () {
-                      // Implement alert action
-                    },
-                  ),
-                ),
-              ],
-            ));
-          } else {
-            return Container(); // Default empty container when no data is fetched
-          }
-        },
-      ),
-      ////////////////////////////
-
-      ///////////////////////////
-      bottomNavigationBar: BottomNavigationBar(
-        // Define the index of the current selected item in BottomNavigationBar
-        currentIndex: 0, // Assuming the home page is index 0
-        // Update the state and navigate when an item is tapped
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const HomePage()),
-            );
-          } else if (index == 1) {
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const EditUserInfoPage()));
-          } else {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()));
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.edit),
-            label: 'Edit Info',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
-    // ignore: dead_code
+  Future<void> fetchAllHealthData() async {
+    heartrate = await getHeartRateData();
+    systolics = await getSystolic();
+    diastolics = await getDiastolic();
+    activity = await getTotalActivityMinutes();
+    steps = await getSteps;
+    sleep = await getSleepSession();
   }
 
-  Widget _buildHealthCard(
-      String title, String value, String imagePath, Color color) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: ListTile(
-        leading: Image.asset(imagePath, color: color, width: 24, height: 24),
-        title: Text(title),
-        trailing: Text(value,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-      ),
-    );
-  }
-
-  Future<double> getHeartRateData() async {
+  ////////////////////////////////////////////////////////
+  Future<int> getHeartRateData() async {
     DateTime startTime = DateTime.now().subtract(const Duration(days: 4));
     DateTime endTime = DateTime.now();
 
@@ -266,17 +146,13 @@ class _HomePageState extends State<HomePage> {
           heartRates.add(sample['beatsPerMinute']);
         }
       }
-
+      int lastHeartRate = heartRates.isNotEmpty ? heartRates.last : 0;
       // Calculate average
-      double averageHeartRate = heartRates.isNotEmpty
-          ? heartRates.reduce((a, b) => a + b) / heartRates.length
-          : 0.0;
-
-      return averageHeartRate;
+      return lastHeartRate;
     } catch (e) {
       // Log the error and return a default value
       print('Error fetching heart rate data: $e');
-      return 0.0; // return a default value or consider rethrowing the exception
+      return 0; // return a default value or consider rethrowing the exception
     }
   }
 
@@ -374,6 +250,8 @@ class _HomePageState extends State<HomePage> {
       double diastolic = await getDiastolic();
       int v = systolic.toInt();
       int d = diastolic.toInt();
+      systolics = systolic;
+      diastolics = diastolic;
       return "$v/$d";
     } catch (e) {
       print('Error fetching blood pressure data: $e');
@@ -435,25 +313,229 @@ class _HomePageState extends State<HomePage> {
     return formattedSleepDuration; // Ensure a string is always returned
   }
 
-  // Future<void> _makePhoneCall(String phoneNumber) async {
-  //   final Uri launchUri = Uri(
-  //     scheme: 'tel',
-  //     path: phoneNumber,
-  //   );
-  //   if (await canLaunchUrl(launchUri)) {
-  //     await launchUrl(launchUri);
-  //   } else {
-  //     throw 'Could not launch $launchUri';
-  //   }
-  // }
+  Future<int> getTotalActivityMinutes() async {
+    DateTime startTime = DateTime.now().subtract(const Duration(days: 4));
+    DateTime endTime = DateTime.now();
+
+    try {
+      // Assuming this is how you fetch the records, modify as per your actual implementation
+      Map<String, dynamic> activityData = await HealthConnectFactory.getRecord(
+        type: HealthConnectDataType.Steps,
+        startTime: startTime,
+        endTime: endTime,
+      );
+
+      List<dynamic> stepRecords = activityData['records'];
+
+      int totalSeconds = 0;
+      for (var record in stepRecords) {
+        // Ensure to check the structure of your record to access the start and end times correctly
+        int recordStartEpoch = record['startTime']['epochSecond'];
+        int recordEndEpoch = record['endTime']['epochSecond'];
+        totalSeconds += (recordEndEpoch - recordStartEpoch);
+      }
+
+      // Convert the total seconds to total minutes
+      int totalMinutes = totalSeconds ~/ 60;
+      return totalMinutes;
+    } catch (e) {
+      print('Error fetching activity data: $e');
+      return 0; // Return 0 or handle the error as needed
+    }
+  }
+
+  ///////////////////////////////////////////////////////
+  Future<void> sendHealthData() async {
+    var url = Uri.parse(
+        'https://439e-2a01-9700-16e7-4a00-ec21-df52-2c1c-53ab.ngrok-free.app/submit_health_data/');
+    UserData userData = await userDataFuture;
+
+    var response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_stress_level': userStressLevel ?? 0,
+        'weight': userData.weight,
+        'height': userData.height,
+        'age': userData.age,
+        'heart_rate': heartrate,
+        'systolic': systolics,
+        'diastolic': diastolics,
+        'physical_activity_minutes': activity,
+        'steps': steps,
+        'sleep_duration': sleep,
+      }),
+    );
+    var res = await http.get(Uri.parse(
+        'https://31f7-2a01-9700-16e7-4a00-d0a2-d8d4-feb1-2b89.ngrok-free.app/test/'));
+    if (response.statusCode == 200) {
+      setState(() {
+        processedData = response.body;
+        // Updating the state with processed data
+      });
+    } else {
+      print('Failed to send data: ${response.statusCode}');
+      processedData = "samira queen";
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home Page'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sentiment_very_dissatisfied,
+                color: Colors.orange),
+            onPressed: showStressLevelDialog, // Trigger stress level dialog
+          ),
+        ],
+      ),
+      body: FutureBuilder<UserData>(
+        future: userDataFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (snapshot.hasData) {
+            UserData user = snapshot.data!;
+            return SingleChildScrollView(
+                child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 50),
+                Text('Hello, ${user.name}!',
+                    textAlign: TextAlign.left,
+                    style: const TextStyle(fontSize: 24)),
+                const SizedBox(height: 20),
+                buildHealthCard('Heart Rate', '$heartrate BPM',
+                    'assets/images/heartrate.png'),
+                buildHealthCard('Blood Pressure', '$systolics/$diastolics',
+                    'assets/images/bloodpress.png'),
+                buildHealthCard('Physical Activity', '$activity M',
+                    'assets/images/bloodpress.png'),
+                buildHealthCard(
+                    'Steps', '$steps SPD', 'assets/images/steps.png'),
+                buildHealthCard(
+                    'Sleep Duration', sleep, 'assets/images/sleep.png'),
+                buildBmiCard(user), // BMI card
+                buildHospitalMessageCard(), // Hospital message card
+                buildAlertCard(),
+                Text('Processed Data: $processedData',
+                    style: const TextStyle(fontSize: 16)), // Alert card
+              ],
+            ));
+          } else {
+            return Container(); // Default empty container when no data is fetched
+          }
+        },
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 0, // Assuming the home page is index 0
+        onTap: (index) {
+          if (index == 0) {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const HomePage()));
+          } else if (index == 1) {
+            Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => const EditUserInfoPage()));
+          } else {
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()));
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.edit), label: 'Edit Info'),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.settings), label: 'Settings'),
+        ],
+      ),
+    );
+  }
+
+  Widget buildBmiCard(UserData user) {
+    return Card(
+      margin: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Image.asset(
+              'assets/images/bmi.png',
+              width: 70,
+              height: 70,
+            ),
+            title: const Text('BMI',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            subtitle: Text(
+              user.getBmiCategory(),
+              style: TextStyle(color: Theme.of(context).primaryColor),
+            ),
+            trailing: Text(
+              user.calculateBMI().toStringAsFixed(2),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildHospitalMessageCard() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: ListTile(
+        title: const Text(
+          'If you feel the need to go to the hospital, don\'t hesitate to call emergency services.',
+        ),
+        leading: const Icon(Icons.warning, color: Colors.orange),
+        onTap: () {
+          // _makePhoneCall('911');
+        },
+      ),
+    );
+  }
+
+  Widget buildAlertCard() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      color: Colors.redAccent,
+      child: ListTile(
+        title: const Text('ALERT!', style: TextStyle(color: Colors.white)),
+        leading: const Icon(Icons.add_alert, color: Colors.white),
+        onTap: () {},
+      ),
+    );
+  }
+
+  Widget buildHealthCard(String title, String value, String imagePath) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: ListTile(
+        leading: Image.asset(imagePath, width: 24, height: 24),
+        title: Text(title),
+        trailing: Text(value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
 }
 
 class UserData {
-  String name;
-  double height;
-  double weight;
+  final String name;
+  final double height;
+  final double weight;
+  final int age; // Changed to DateTime for easier handling in Flutter
 
-  UserData({required this.name, required this.height, required this.weight});
+  UserData(
+      {required this.name,
+      required this.height,
+      required this.weight,
+      required this.age});
 
   double calculateBMI() {
     if (height <= 0 || weight <= 0) {
@@ -464,9 +546,14 @@ class UserData {
 
   String getBmiCategory() {
     double bmi = calculateBMI();
-    if (bmi < 18.5) return 'Underweight';
-    if (bmi >= 18.5 && bmi < 25) return 'Normal weight';
-    if (bmi >= 25 && bmi < 30) return 'Overweight';
-    return 'Obese';
+    if (bmi < 18.5) {
+      return 'Underweight';
+    } else if (bmi < 25) {
+      return 'Normal weight';
+    } else if (bmi < 30) {
+      return 'Overweight';
+    } else {
+      return 'Obese';
+    }
   }
 }
