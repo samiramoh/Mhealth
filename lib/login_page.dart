@@ -3,6 +3,8 @@ import 'package:mhealth/signup_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mhealth/inputdata.dart';
 import 'package:mhealth/home_page.dart';
+import 'package:mhealth/forgotpass.dart';
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -121,6 +123,26 @@ class _LoginPageState extends State<LoginPage> {
                 onTap: () {
                   Navigator.push(
                     context,
+                    MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordPage()),
+                  );
+                },
+                child: const Text(
+                  'Forgot password?',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Tahoma',
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
                     MaterialPageRoute(builder: (context) => const SignUpPage()),
                   );
                 },
@@ -135,13 +157,15 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              ElevatedButton(onPressed: (){
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const Health()),
-                  );
-              },
-              child: const Text("Input"))
+              const SizedBox(height: 40),
+              ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const Health()),
+                    );
+                  },
+                  child: const Text("Health connect permission"))
             ],
           ),
         ),

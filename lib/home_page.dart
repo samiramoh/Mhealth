@@ -24,8 +24,10 @@ class _HomePageState extends State<HomePage> {
   int steps = 0;
   String sleep = 'No data';
   String processedData = "No processed data yet";
+  String vars = "All Good!";
   late int age;
   final String _message = '';
+  late bool gender;
 
   @override
   void initState() {
@@ -43,7 +45,8 @@ class _HomePageState extends State<HomePage> {
       barrierDismissible: false, // User must tap a button.
       builder: (BuildContext dialogContext) {
         return SimpleDialog(
-          title: const Text('In a scale from 1 to 10 how stressed are you?'),
+          title: const Text(
+              'In a scale from 1 to 10 how stressed are you? (10 is the significant level of depression)'),
           children: List<Widget>.generate(
               10,
               (index) => SimpleDialogOption(
@@ -88,8 +91,13 @@ class _HomePageState extends State<HomePage> {
     var name = data['Fname'] as String?;
     var height = (data['Height'] as num?)?.toDouble();
     var weight = (data['Weight'] as num?)?.toDouble();
+    var Glucose = data['Glucose'] as String;
+    var smokingStatus = data['smoking_status'] as String;
+    var drinksAlcohol = data['drinks_alcohol'] as bool;
+    var heartDisease = data['Heart_disease'] as bool;
+    var chol = data['cholesterol'] as String;
     Timestamp? dobTimestamp = data['dateofbirth'] as Timestamp?;
-
+    var gender = data['gender'] as bool;
     if (name == null) {
       throw Exception('Name field is missing in user data.');
     }
@@ -111,7 +119,17 @@ class _HomePageState extends State<HomePage> {
             currentDate.day < dateOfBirth.day)) {
       age--;
     }
-    return UserData(name: name, height: height, weight: weight, age: age);
+    return UserData(
+        name: name,
+        height: height,
+        weight: weight,
+        age: age,
+        gender: gender,
+        Glucose: Glucose,
+        smoking_status: smokingStatus,
+        drinks_alcohol: drinksAlcohol,
+        heart_disease: heartDisease,
+        chol: chol);
   }
 
   Future<void> fetchAllHealthData() async {
@@ -314,7 +332,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<int> getTotalActivityMinutes() async {
-    DateTime startTime = DateTime.now().subtract(const Duration(days: 4));
+    DateTime startTime = DateTime.now().subtract(const Duration(days: 1));
     DateTime endTime = DateTime.now();
 
     try {
@@ -347,7 +365,7 @@ class _HomePageState extends State<HomePage> {
   ///////////////////////////////////////////////////////
   Future<void> sendHealthData() async {
     var url = Uri.parse(
-        'https://439e-2a01-9700-16e7-4a00-ec21-df52-2c1c-53ab.ngrok-free.app/submit_health_data/');
+        'https://5022-2a01-9700-1611-7700-5c11-5e20-b4d3-643f.ngrok-free.app/submit_health_data/');
     UserData userData = await userDataFuture;
 
     var response = await http.post(
@@ -364,10 +382,14 @@ class _HomePageState extends State<HomePage> {
         'physical_activity_minutes': activity,
         'steps': steps,
         'sleep_duration': sleep,
+        'gender': userData.gender,
+        'alcohol': userData.drinks_alcohol,
+        'Glucose': userData.Glucose,
+        'smoking_status': userData.smoking_status,
+        'Heart_disease': userData.heart_disease,
+        'chol': userData.chol
       }),
     );
-    var res = await http.get(Uri.parse(
-        'https://31f7-2a01-9700-16e7-4a00-d0a2-d8d4-feb1-2b89.ngrok-free.app/test/'));
     if (response.statusCode == 200) {
       setState(() {
         processedData = response.body;
@@ -405,7 +427,7 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 50),
+                const SizedBox(height: 20),
                 Text('Hello, ${user.name}!',
                     textAlign: TextAlign.left,
                     style: const TextStyle(fontSize: 24)),
@@ -414,17 +436,21 @@ class _HomePageState extends State<HomePage> {
                     'assets/images/heartrate.png'),
                 buildHealthCard('Blood Pressure', '$systolics/$diastolics',
                     'assets/images/bloodpress.png'),
-                buildHealthCard('Physical Activity', '$activity M',
-                    'assets/images/bloodpress.png'),
                 buildHealthCard(
                     'Steps', '$steps SPD', 'assets/images/steps.png'),
                 buildHealthCard(
                     'Sleep Duration', sleep, 'assets/images/sleep.png'),
                 buildBmiCard(user), // BMI card
-                buildHospitalMessageCard(), // Hospital message card
-                buildAlertCard(),
-                Text('Processed Data: $processedData',
-                    style: const TextStyle(fontSize: 16)), // Alert card
+                buildHospitalMessageCard(),
+                // Hospital message card
+                if (processedData == '"All Good!"') ...[
+                  buildGreenTechCard()
+                ] else ...[
+                  buildAlertCard(),
+                  Text('ALERT ! $processedData',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16)),
+                ] // Alert card
               ],
             ));
           } else {
@@ -512,6 +538,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget buildGreenTechCard() {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      color: Colors.green, // Change color to green
+      child: ListTile(
+        title: const Text('You are all well!',
+            style: TextStyle(color: Colors.white)),
+        leading: const Icon(Icons.check_circle,
+            color: Colors.white), // Change icon to green tick
+        onTap: () {},
+      ),
+    );
+  }
+
   Widget buildHealthCard(String title, String value, String imagePath) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -530,12 +570,30 @@ class UserData {
   final double height;
   final double weight;
   final int age; // Changed to DateTime for easier handling in Flutter
+  final bool gender;
+  // ignore: non_constant_identifier_names
+  final String Glucose;
+  // ignore: non_constant_identifier_names
+  final String smoking_status;
+  // ignore: non_constant_identifier_names
+  final bool drinks_alcohol;
+  final bool heart_disease;
+  final String chol;
 
   UserData(
       {required this.name,
       required this.height,
       required this.weight,
-      required this.age});
+      required this.age,
+      required this.gender,
+      // ignore: non_constant_identifier_names
+      required this.Glucose,
+      // ignore: non_constant_identifier_names
+      required this.smoking_status,
+      // ignore: non_constant_identifier_names
+      required this.drinks_alcohol,
+      required this.heart_disease,
+      required this.chol});
 
   double calculateBMI() {
     if (height <= 0 || weight <= 0) {

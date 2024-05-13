@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mhealth/login_page.dart'; // Make sure this import is correct
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mhealth/login_page.dart';
 
 class UserInformationPage extends StatefulWidget {
   const UserInformationPage({super.key});
@@ -30,10 +30,12 @@ class _UserInformationPageState extends State<UserInformationPage> {
     }
   }
 
-  bool _isSmoker = false;
+  String _smokingStatus = 'Never Smoked';
   String _gender = 'Male';
   String _cholesterol = 'Normal';
   String _glucose = 'Normal';
+  bool _drinksAlcohol = false;
+  bool _heartdisease = false;
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
@@ -65,22 +67,13 @@ class _UserInformationPageState extends State<UserInformationPage> {
       return;
     }
 
-    // Convert height and weight to numbers
     final num height = num.tryParse(_heightController.text) ?? 0;
     final num weight = num.tryParse(_weightController.text) ?? 0;
-
-    // Convert gender to boolean
     final bool genderBool = _gender == 'Male';
-
-    // Convert date of birth to Timestamp
     final DateFormat format = DateFormat('dd/MM/yyyy');
     final DateTime dob = format.parse(_dateOfBirthController.text);
     final Timestamp dobTimestamp = Timestamp.fromDate(dob);
 
-    // Assemble the user data into a map with the correct types
-    var isSmoker = _isSmoker;
-    var cholesterol = _cholesterol;
-    var glucose = _glucose;
     final userData = {
       'Fname': _firstNameController.text,
       'Lname': _lastNameController.text,
@@ -88,21 +81,18 @@ class _UserInformationPageState extends State<UserInformationPage> {
       'Weight': weight,
       'dateofbirth': dobTimestamp,
       'gender': genderBool,
-      'smoker': isSmoker,
-      'cholesterol': cholesterol,
-      'Glucose': glucose,
+      'smoking_status': _smokingStatus,
+      'cholesterol': _cholesterol,
+      'Glucose': _glucose,
+      'drinks_alcohol': _drinksAlcohol,
+      'Heart_disease': _heartdisease
     };
 
-    // Save the data to the 'user data' collection in Cloud Firestore
     try {
-      var firestore = _firestore;
-      await firestore
-          .collection('user data') // Changed to 'user data' collection
-          .doc(loggedInUser?.uid) // Use the UID as the document ID
-          .set(
-              userData,
-              SetOptions(
-                  merge: true)); // Merge the data with existing documents
+      await _firestore
+          .collection('user data')
+          .doc(loggedInUser?.uid)
+          .set(userData, SetOptions(merge: true));
       debugPrint(
           'User information saved to Firestore in the user data collection.');
       Navigator.of(context)
@@ -123,9 +113,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
           actions: [
             TextButton(
               child: const Text('OK'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
+              onPressed: () => Navigator.of(context).pop(),
             ),
           ],
         );
@@ -149,8 +137,8 @@ class _UserInformationPageState extends State<UserInformationPage> {
       appBar: AppBar(
         title: const Text('User Information'),
         centerTitle: true,
-        elevation: 0,
         backgroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -187,9 +175,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
                 hintText: 'DD/MM/YYYY',
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.calendar_today),
-                  onPressed: () {
-                    _selectDate(context);
-                  },
+                  onPressed: () => _selectDate(context),
                 ),
               ),
               readOnly: true,
@@ -220,7 +206,7 @@ class _UserInformationPageState extends State<UserInformationPage> {
             const Text('Gender'),
             buildGenderSelector(),
             const SizedBox(height: 16),
-            const Text('Do you Smoke?'),
+            const Text('Smoking Status'),
             buildSmokingSelector(),
             const SizedBox(height: 16),
             const Text('Cholesterol Level'),
@@ -228,11 +214,32 @@ class _UserInformationPageState extends State<UserInformationPage> {
             const SizedBox(height: 16),
             const Text('Glucose Level'),
             buildGlucoseSelector(),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Do you drink alcohol?'),
+              value: _drinksAlcohol,
+              activeColor: Colors.green,
+              onChanged: (bool value) {
+                setState(() {
+                  _drinksAlcohol = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Do you suffer from any heart disease?'),
+              value: _heartdisease,
+              activeColor: Colors.green,
+              onChanged: (bool value) {
+                setState(() {
+                  _heartdisease = value;
+                });
+              },
+            ),
             const SizedBox(height: 24),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity,
-                    50), // Width as wide as the parent, height 50
+                minimumSize: const Size(double.infinity, 50),
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
               ),
@@ -282,31 +289,36 @@ class _UserInformationPageState extends State<UserInformationPage> {
   }
 
   Widget buildSmokingSelector() {
-    return SwitchListTile(
-      title: const Text('Do you Smoke?'),
-      value: _isSmoker,
-      activeColor: Colors.green,
-      onChanged: (bool value) {
-        setState(() {
-          _isSmoker = value;
-        });
-      },
+    return Column(
+      children: <String>['never smoked', 'formerly smoked', 'smokes']
+          .map((String value) => RadioListTile<String>(
+                title: Text(value),
+                value: value,
+                groupValue: _smokingStatus,
+                onChanged: (String? selected) {
+                  setState(() {
+                    _smokingStatus = selected ?? _smokingStatus;
+                  });
+                },
+                activeColor: Colors.green,
+              ))
+          .toList(),
     );
   }
 
   Widget buildCholesterolSelector() {
     return Column(
-      children: <String>['Normal', 'Above Normal', 'Well above Normal']
+      children: <String>['Normal', 'Above Normal', 'Well Above Normal']
           .map((String value) => RadioListTile<String>(
                 title: Text(value),
                 value: value,
-                activeColor: Colors.green,
                 groupValue: _cholesterol,
                 onChanged: (String? selected) {
                   setState(() {
                     _cholesterol = selected ?? _cholesterol;
                   });
                 },
+                activeColor: Colors.green,
               ))
           .toList(),
     );
@@ -314,17 +326,22 @@ class _UserInformationPageState extends State<UserInformationPage> {
 
   Widget buildGlucoseSelector() {
     return Column(
-      children: <String>['Normal', 'Above Normal', 'Well above Normal']
+      children: <String>[
+        'Below Normal',
+        'Normal',
+        'Above Normal',
+        'Well Above Normal'
+      ]
           .map((String value) => RadioListTile<String>(
                 title: Text(value),
                 value: value,
-                activeColor: Colors.green,
                 groupValue: _glucose,
                 onChanged: (String? selected) {
                   setState(() {
                     _glucose = selected ?? _glucose;
                   });
                 },
+                activeColor: Colors.green,
               ))
           .toList(),
     );
