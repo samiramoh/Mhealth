@@ -365,7 +365,7 @@ class _HomePageState extends State<HomePage> {
   ///////////////////////////////////////////////////////
   Future<void> sendHealthData() async {
     var url = Uri.parse(
-        'https://5022-2a01-9700-1611-7700-5c11-5e20-b4d3-643f.ngrok-free.app/submit_health_data/');
+        'https://8f0f-79-134-131-24.ngrok-free.app/submit_health_data/');
     UserData userData = await userDataFuture;
 
     var response = await http.post(
@@ -397,7 +397,7 @@ class _HomePageState extends State<HomePage> {
       });
     } else {
       print('Failed to send data: ${response.statusCode}');
-      processedData = "samira queen";
+      processedData = "No processed data";
     }
   }
 

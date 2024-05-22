@@ -74,26 +74,7 @@ class _HealthState extends State<Health> {
         body: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            ElevatedButton(
-              onPressed: getSleepSession,
-              child: const Text('Get sleep session'),
-            ),
-            ElevatedButton(
-              onPressed: getdiastolic,
-              child: const Text('Get diastolic blood pressure'),
-            ),
-            ElevatedButton(
-              onPressed: getsteps,
-              child: const Text('Get steps score'),
-            ),
-            ElevatedButton(
-              onPressed: getSystolic,
-              child: const Text('Get systolic blood pressure'),
-            ),
-            ElevatedButton(
-              onPressed: getHeartRateData,
-              child: const Text('Get Heart Rate'),
-            ),
+            // IsApiSupported
             ElevatedButton(
               onPressed: () async {
                 var result = await HealthConnectFactory.isApiSupported();
@@ -102,14 +83,7 @@ class _HealthState extends State<Health> {
               },
               child: const Text('isApiSupported'),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                var result = await HealthConnectFactory.isAvailable();
-                resultText = 'isAvailable: $result';
-                _updateResultText(resultText);
-              },
-              child: const Text('Check installed'),
-            ),
+            // Install Health Connect
             ElevatedButton(
               onPressed: () async {
                 try {
@@ -122,6 +96,7 @@ class _HealthState extends State<Health> {
               },
               child: const Text('Install Health Connect'),
             ),
+            // Open Health Connect Settings
             ElevatedButton(
               onPressed: () async {
                 try {
@@ -134,6 +109,7 @@ class _HealthState extends State<Health> {
               },
               child: const Text('Open Health Connect Settings'),
             ),
+            // Has Permissions
             ElevatedButton(
               onPressed: () async {
                 var result = await HealthConnectFactory.hasPermissions(
@@ -145,30 +121,7 @@ class _HealthState extends State<Health> {
               },
               child: const Text('Has Permissions'),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  token = await HealthConnectFactory.getChangesToken(types);
-                  resultText = 'token: $token';
-                } catch (e) {
-                  resultText = e.toString();
-                }
-                _updateResultText(resultText);
-              },
-              child: const Text('Get Changes Token'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  var result = await HealthConnectFactory.getChanges(token);
-                  resultText = 'token: $result';
-                } catch (e) {
-                  resultText = e.toString();
-                }
-                _updateResultText(resultText);
-              },
-              child: const Text('Get Changes'),
-            ),
+            // Request Permissions
             ElevatedButton(
               onPressed: () async {
                 try {
@@ -183,30 +136,6 @@ class _HealthState extends State<Health> {
                 _updateResultText(resultText);
               },
               child: const Text('Request Permissions'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                var startTime =
-                    DateTime.now().subtract(const Duration(days: 4));
-                var endTime = DateTime.now();
-                try {
-                  final requests = <Future>[];
-                  Map<String, dynamic> typePoints = {};
-                  for (var type in types) {
-                    requests.add(HealthConnectFactory.getRecord(
-                      type: type,
-                      startTime: startTime,
-                      endTime: endTime,
-                    ).then((value) => typePoints.addAll({type.name: value})));
-                  }
-                  await Future.wait(requests);
-                  resultText = '$typePoints';
-                } catch (e) {
-                  resultText = e.toString();
-                }
-                _updateResultText(resultText);
-              },
-              child: const Text('Get Record'),
             ),
             Text(resultText),
           ],
